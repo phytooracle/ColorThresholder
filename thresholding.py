@@ -3,6 +3,7 @@ import os
 import sys
 import argparse
 import numpy as np
+import pylas
 
 
 def get_args():
@@ -56,11 +57,8 @@ def create_segmented_color_pic(file_name, mask, green_pixels, img):
     cv2.imwrite(f"{file_name.split('.')[0]}_thresholded.tiff", result)
 
 
-def main():
-    args = get_args()
-    actual_name = args.name
+def tiff_thresholding(actual_name):
     img = cv2.imread(actual_name)
-    os.mkdir(actual_name.split(".")[0])
     os.chdir(actual_name.split(".")[0])
     # make a jpeg copy of the actual file for easy comparison
     cv2.imwrite(
@@ -82,6 +80,54 @@ def main():
     create_segmented_color_pic(actual_name, mask, green_pixels, img)
 
     os.chdir("../")
+
+
+def laz_thresholding(actual_name):
+    las = pylas.read(actual_name)
+    os.chdir(actual_name.split(".")[0])
+
+    # Extract the color values into numpy arrays and normalize them
+    R = las.points["red"] / 65535.0
+    G = las.points["green"] / 65535.0
+    B = las.points["blue"] / 65535.0
+
+    # Stack the normalized RGB values to create an image
+    RGB = np.dstack((R, G, B))
+    HSV = cv2.cvtColor((RGB * 255).astype(np.uint8), cv2.COLOR_RGB2HSV)
+
+    # Color Range. MODIFY IF REQUIRED
+    lower_val = np.array([34, 22, 22])
+    upper_val = np.array([86, 255, 255])
+
+    # Create a mask for points that are "green"
+    mask = (
+        (HSV[..., 0] >= lower_val[0])
+        & (HSV[..., 0] <= upper_val[0])
+        & (HSV[..., 1] >= lower_val[1])
+        & (HSV[..., 1] <= upper_val[1])
+        & (HSV[..., 2] >= lower_val[2])
+        & (HSV[..., 2] <= upper_val[2])
+    )
+
+    # Apply the mask to get the points that are "green"
+    green_points = las.points[mask.flatten()]
+
+    # Create a new .las file with only the green points
+    new_las = pylas.create(point_format_id=las.header.point_format_id)
+    new_las.points = green_points
+
+    # Write the new .las file
+    new_las.write(f"{actual_name.split('.')[0]}_green_only.las")
+
+
+def main():
+    args = get_args()
+    actual_name = args.name
+    os.mkdir(actual_name.split(".")[0])
+    if not args.pointcloud:
+        tiff_thresholding(actual_name)
+    else:
+        laz_thresholding(actual_name)
 
 
 # --------------------------------------------------
