@@ -113,12 +113,11 @@ def laz_thresholding(actual_name):
     green_points = las.points[mask.flatten()]
 
     # Create a new .las file with only the green points
-    new_las = laspy.create(point_format=las.header.point_format_id)
+    new_las = laspy.create(point_format=las.header.point_format)
     new_las.points = green_points
 
     # Write the new .las file
     new_las.write(f"{actual_name.split('.')[0]}_green_only.las")
-    las = pylas.read(actual_name)
 
 
 def main():
