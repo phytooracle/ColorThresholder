@@ -83,13 +83,13 @@ def tiff_thresholding(actual_name):
 
 
 def laz_thresholding(actual_name):
-    las = pylas.read(actual_name)
+    las = laspy.read(actual_name)
     os.chdir(actual_name.split(".")[0])
 
     # Extract the color values into numpy arrays and normalize them
-    R = las.points["red"] / 65535.0
-    G = las.points["green"] / 65535.0
-    B = las.points["blue"] / 65535.0
+    R = las.red / 65535.0
+    G = las.green / 65535.0
+    B = las.blue / 65535.0
 
     # Stack the normalized RGB values to create an image
     RGB = np.dstack((R, G, B))
@@ -113,11 +113,12 @@ def laz_thresholding(actual_name):
     green_points = las.points[mask.flatten()]
 
     # Create a new .las file with only the green points
-    new_las = pylas.create(point_format_id=las.header.point_format_id)
+    new_las = laspy.create(point_format=las.header.point_format_id)
     new_las.points = green_points
 
     # Write the new .las file
     new_las.write(f"{actual_name.split('.')[0]}_green_only.las")
+    las = pylas.read(actual_name)
 
 
 def main():
